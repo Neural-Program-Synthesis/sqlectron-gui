@@ -14,7 +14,8 @@ import ServerDBClientInfoModal from './server-db-client-info-modal';
 import { BROWSER_MENU_EDITOR_FORMAT } from '../../common/event';
 import MenuHandler from '../utils/menu';
 import { Query } from '../reducers/queries';
-import { useAppSelector } from '../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { fetchSQLQuery } from '../actions/nl2sql';
 
 require('./react-resizable.css');
 require('./override-ace.css');
@@ -84,6 +85,7 @@ const Query: FC<Props> = ({
     functions,
     procedures,
     tablecolumns,
+    formal_sql_query,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -98,6 +100,7 @@ const Query: FC<Props> = ({
     functions: state.routines.functionsByDatabase[query.database],
     procedures: state.routines.proceduresByDatabase[query.database],
     tablecolumns: state.tablecolumns,
+    formal_sql_query: state.nl2sqls.query,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -108,6 +111,8 @@ const Query: FC<Props> = ({
   const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
 
   const editorRef = useRef<AceEditor>(null);
+
+  const dispatch = useAppDispatch();
 
   const handleSelectionChange = useCallback(() => {
     if (editorRef.current) {
@@ -231,35 +236,19 @@ const Query: FC<Props> = ({
     }
   }, [isCurrentQuery]);
 
+  useEffect(() => {
+    if (formal_sql_query) {
+      onSQLChange(formal_sql_query);
+    }
+  }, [onSQLChange, formal_sql_query]);
+
   const handleNL2SQLQueryClick = useCallback(
     (tablecolumns) => {
       setIsCallingNL2SQL(true);
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
-
-      // refracter this part
-      fetch('http://127.0.0.1:8080/', {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: copyText,
-          schema: tablecolumns,
-        }),
-        mode: 'cors',
-        cache: 'no-cache',
-        method: 'POST',
-      })
-        .then((resp) => {
-          return resp.text();
-        })
-        .then((generatedSQL) => {
-          onSQLChange(generatedSQL);
-          setIsCallingNL2SQL(false);
-        })
-        .catch((err) => {
-          setIsCallingNL2SQL(false);
-        });
+      dispatch(fetchSQLQuery(copyText, tablecolumns));
+      setIsCallingNL2SQL(false);
     },
     [onSQLChange, editorRef],
   );
