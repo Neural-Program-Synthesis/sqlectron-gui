@@ -58,11 +58,11 @@ export function fetchAllTableColumns(database: string, schema?: string): ThunkRe
         // TODO: optimize efficiency
         const columns = await sqlectron.db.listTableColumns(database, table, schema);
         // for only getting columnName
-        // const columns = column_infos.map(data => data.columnName);
+        const columnNames = columns.map((data) => data.columnName);
         dispatch({
           type: FETCH_ALL_COLUMNS_SUCCESS,
           table,
-          columns,
+          columns: columnNames,
         });
       }
     } catch (error) {
