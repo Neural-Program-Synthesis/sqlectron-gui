@@ -14,6 +14,7 @@ import columns, { ColumnState } from './columns';
 import triggers, { TriggerState } from './triggers';
 import indexes, { IndexState } from './indexes';
 import sqlscripts, { ScriptState } from './sqlscripts';
+import nl2sqls, { NL2SQLState } from './nl2sql';
 import keys, { KeyState } from './keys';
 import tablecolumns, { TableColumnState } from './table_columns';
 
@@ -37,6 +38,7 @@ export interface ApplicationState {
   indexes: IndexState;
   sqlscripts: ScriptState;
   keys: KeyState;
+  nl2sqls: NL2SQLState;
 }
 
 const rootReducer: Reducer<ApplicationState> = combineReducers<ApplicationState>({
@@ -56,6 +58,7 @@ const rootReducer: Reducer<ApplicationState> = combineReducers<ApplicationState>
   indexes,
   sqlscripts,
   keys,
+  nl2sqls,
 });
 
 export default rootReducer;
