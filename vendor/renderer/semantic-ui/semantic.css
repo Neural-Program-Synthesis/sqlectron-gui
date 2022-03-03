@@ -16030,6 +16030,9 @@ ol.ui.horizontal.list li:before,
 .ui.segment:first-child {
   margin-top: 0em;
 }
+.ui.itemlist {
+  margin-top: 0em;
+}
 
 .ui.segment:last-child {
   margin-bottom: 0em;
