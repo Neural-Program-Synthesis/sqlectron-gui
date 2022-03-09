@@ -10,11 +10,14 @@ import 'ace-builds/src-noconflict/ext-searchbox';
 import { ResizableBox } from 'react-resizable';
 import CheckBox from './checkbox';
 import QueryResults from './query-results';
+import FormalQueryList from './nl2sql-list-view';
 import ServerDBClientInfoModal from './server-db-client-info-modal';
 import { BROWSER_MENU_EDITOR_FORMAT } from '../../common/event';
 import MenuHandler from '../utils/menu';
 import { Query } from '../reducers/queries';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { fetchAllTableColumns } from '../actions/columns';
+import { fetchTablesIfNeeded } from '../actions/tables';
 import { fetchSQLQuery } from '../actions/nl2sql';
 
 require('./react-resizable.css');
@@ -85,7 +88,9 @@ const Query: FC<Props> = ({
     functions,
     procedures,
     tablecolumns,
-    formal_sql_query,
+    nl2SqlGeneratedQueries,
+    selectedGeneratedQuery,
+    isCallingNL2SQL,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -100,7 +105,9 @@ const Query: FC<Props> = ({
     functions: state.routines.functionsByDatabase[query.database],
     procedures: state.routines.proceduresByDatabase[query.database],
     tablecolumns: state.tablecolumns,
-    formal_sql_query: state.nl2sqls.query,
+    nl2SqlGeneratedQueries: state.nl2sqls.queries,
+    selectedGeneratedQuery: state.nl2sqls.selectedQuery,
+    isCallingNL2SQL: state.nl2sqls.isCalling,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -108,8 +115,10 @@ const Query: FC<Props> = ({
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [wrapEnabled, setWrapEnabled] = useState(false);
 
-  const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
+  // const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
 
+  const [isColumnsFetch, setIsColumnsFetch] = useState(false);
+  const [isTableFetched, setIsTableFetch] = useState(false);
   const editorRef = useRef<AceEditor>(null);
 
   const dispatch = useAppDispatch();
@@ -237,26 +246,50 @@ const Query: FC<Props> = ({
   }, [isCurrentQuery]);
 
   useEffect(() => {
-    if (formal_sql_query) {
-      onSQLChange(formal_sql_query);
+    if (!isColumnsFetch && isTableFetched) {
+      onSelectToggle(query.database);
+      setIsColumnsFetch(true);
     }
-  }, [onSQLChange, formal_sql_query]);
+  }, [onSelectToggle, query]);
+
+  useEffect(() => {
+    if (!isTableFetched) {
+      fetchTablesIfNeeded(query.database);
+      setIsTableFetch(true);
+    }
+  }, [onSelectToggle, query]);
+
+  // when a generated query is selected, set editor content to it
+  useEffect(() => {
+    if (selectedGeneratedQuery && selectedGeneratedQuery.length >= 1) {
+      let copyText =
+        editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
+
+      if (copyText?.startsWith('-- Generated from')) {
+        copyText = copyText.split('\n')[0].split('-- Generated from: "')[1].slice(0, -1);
+      }
+
+      let formatted = `${selectedGeneratedQuery}`;
+      if (copyText && copyText.length > 0) {
+        formatted = `-- Generated from: "${copyText.trim()}"\n` + formatted;
+      }
+      onSQLChange(formatted);
+    }
+  }, [onSQLChange, selectedGeneratedQuery]);
 
   const handleNL2SQLQueryClick = useCallback(
     (tablecolumns) => {
-      setIsCallingNL2SQL(true);
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
       dispatch(fetchSQLQuery(copyText, tablecolumns));
-      setIsCallingNL2SQL(false);
     },
-    [onSQLChange, editorRef],
+    [onSQLChange, editorRef, onSelectToggle],
   );
 
   const handleExecQueryClick = useCallback(() => {
     const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
     onExecQueryClick(sqlQuery);
-  }, [onExecQueryClick, query.query, editorRef]);
+  }, [onExecQueryClick, selectedGeneratedQuery]); //query.query, editorRef
 
   const onDiscQueryClick = useCallback(() => {
     onSQLChange('');
@@ -275,7 +308,6 @@ const Query: FC<Props> = ({
   }, [editorRef]);
 
   const onWrapContentsChecked = useCallback(() => {
-    onSelectToggle(query.database);
     setWrapEnabled(true);
   }, []);
 
@@ -349,46 +381,61 @@ const Query: FC<Props> = ({
   }, [client, query.query]);
 
   const infos = INFOS[client];
-
   return (
     <div>
       <div>
-        <ResizableBox
-          className="react-resizable react-resizable-se-resize ui segment"
-          height={QUERY_EDITOR_HEIGTH}
-          width={500}
-          onResizeStop={onQueryBoxResize}>
-          <>
-            <div ref={queryRef} tabIndex={-1} onFocus={onFocus}></div>
-            <AceEditor
-              mode="sql"
-              theme="github"
-              name={editorName}
-              height="calc(100% - 15px)"
-              width="100%"
-              ref={editorRef}
-              value={query.query}
-              wrapEnabled={wrapEnabled}
-              showPrintMargin={false}
-              commands={commands}
-              editorProps={{ $blockScrolling: Infinity }}
-              onChange={debounce(onSQLChange, 50)}
-              enableBasicAutocompletion
-              enableLiveAutocompletion
-            />
-            <div className="ui secondary menu" style={{ marginTop: 0 }}>
-              <div className="right menu">
-                <CheckBox
-                  name="wrapQueryContents"
-                  label="NL2SQL"
-                  checked={wrapEnabled}
-                  onChecked={onWrapContentsChecked}
-                  onUnchecked={onWrapContentsUnchecked}
-                />
+        <div className="react-resizeable-container">
+          <ResizableBox
+            className="react-resizable react-resizable-se-resize ui segment"
+            height={QUERY_EDITOR_HEIGTH}
+            width={500}
+            onResizeStop={onQueryBoxResize}>
+            <>
+              <div ref={queryRef} tabIndex={-1} onFocus={onFocus}></div>
+              <AceEditor
+                mode="sql"
+                theme="github"
+                name={editorName}
+                height="calc(100% - 15px)"
+                width="100%"
+                ref={editorRef}
+                value={query.query}
+                wrapEnabled={wrapEnabled}
+                showPrintMargin={false}
+                commands={commands}
+                editorProps={{ $blockScrolling: Infinity }}
+                onChange={debounce(onSQLChange, 50)}
+                enableBasicAutocompletion
+                enableLiveAutocompletion
+              />
+              <div className="ui secondary menu" style={{ marginTop: 0 }}>
+                <div className="right menu">
+                  <CheckBox
+                    name="wrapQueryContents"
+                    label="Wrap Contents"
+                    checked={wrapEnabled}
+                    onChecked={onWrapContentsChecked}
+                    onUnchecked={onWrapContentsUnchecked}
+                  />
+                </div>
               </div>
-            </div>
-          </>
-        </ResizableBox>
+            </>
+          </ResizableBox>
+          <ResizableBox
+            className="react-resizable react-resizable-se-resize ui segment itemlist"
+            height={QUERY_EDITOR_HEIGTH}
+            width={500}
+            onResizeStop={onQueryBoxResize}>
+            <>
+              <FormalQueryList
+                isLoading={isCallingNL2SQL}
+                array={nl2SqlGeneratedQueries}
+                selected={selectedGeneratedQuery}
+              />
+            </>
+          </ResizableBox>
+        </div>
+
         <div className="ui secondary menu" style={{ marginTop: 0 }}>
           {infos && (
             <div className="item">
@@ -406,7 +453,7 @@ const Query: FC<Props> = ({
             <div className="item">
               <div className="ui buttons">
                 <button
-                  className={`ui primary button ${isCallingNL2SQL ? 'loading' : ''}`}
+                  className={`ui primary button`}
                   onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
                   NL2SQL
                 </button>
