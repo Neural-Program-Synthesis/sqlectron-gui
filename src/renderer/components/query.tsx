@@ -88,8 +88,9 @@ const Query: FC<Props> = ({
     functions,
     procedures,
     tablecolumns,
-    formal_sql_queries,
-    selected_sql_query,
+    nl2SqlGeneratedQueries,
+    selectedGeneratedQuery,
+    isCallingNL2SQL,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -104,8 +105,9 @@ const Query: FC<Props> = ({
     functions: state.routines.functionsByDatabase[query.database],
     procedures: state.routines.proceduresByDatabase[query.database],
     tablecolumns: state.tablecolumns,
-    formal_sql_queries: state.nl2sqls.queries,
-    selected_sql_query: state.nl2sqls.selected_query,
+    nl2SqlGeneratedQueries: state.nl2sqls.queries,
+    selectedGeneratedQuery: state.nl2sqls.selectedQuery,
+    isCallingNL2SQL: state.nl2sqls.isCalling,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -113,7 +115,7 @@ const Query: FC<Props> = ({
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [wrapEnabled, setWrapEnabled] = useState(false);
 
-  const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
+  // const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
 
   const [isColumnsFetch, setIsColumnsFetch] = useState(false);
   const [isTableFetched, setIsTableFetch] = useState(false);
@@ -257,30 +259,37 @@ const Query: FC<Props> = ({
     }
   }, [onSelectToggle, query]);
 
-  // get selected query
-  // and execute query result
+  // when a generated query is selected, set editor content to it
+  useEffect(() => {
+    if (selectedGeneratedQuery && selectedGeneratedQuery.length >= 1) {
+      let copyText =
+        editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
 
-  // useEffect(() => {
-  //   if (formal_sql_queries) {
-  //     onSQLChange(formal_sql_queries);
-  //   }
-  // }, [onSQLChange, formal_sql_queries]);
+      if (copyText?.startsWith('-- Generated from')) {
+        copyText = copyText.split('\n')[0].split('-- Generated from: "')[1].slice(0, -1);
+      }
+
+      let formatted = `${selectedGeneratedQuery}`;
+      if (copyText && copyText.length > 0) {
+        formatted = `-- Generated from: "${copyText.trim()}"\n` + formatted;
+      }
+      onSQLChange(formatted);
+    }
+  }, [onSQLChange, selectedGeneratedQuery]);
 
   const handleNL2SQLQueryClick = useCallback(
     (tablecolumns) => {
-      setIsCallingNL2SQL(true);
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
       dispatch(fetchSQLQuery(copyText, tablecolumns));
-      setIsCallingNL2SQL(false);
     },
     [onSQLChange, editorRef, onSelectToggle],
   );
 
   const handleExecQueryClick = useCallback(() => {
-    // const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
-    onExecQueryClick(selected_sql_query);
-  }, [onExecQueryClick, selected_sql_query]); //query.query, editorRef
+    const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
+    onExecQueryClick(sqlQuery);
+  }, [onExecQueryClick, selectedGeneratedQuery]); //query.query, editorRef
 
   const onDiscQueryClick = useCallback(() => {
     onSQLChange('');
@@ -418,7 +427,11 @@ const Query: FC<Props> = ({
             width={500}
             onResizeStop={onQueryBoxResize}>
             <>
-              <FormalQueryList array={formal_sql_queries} />
+              <FormalQueryList
+                isLoading={isCallingNL2SQL}
+                array={nl2SqlGeneratedQueries}
+                selected={selectedGeneratedQuery}
+              />
             </>
           </ResizableBox>
         </div>
@@ -440,7 +453,7 @@ const Query: FC<Props> = ({
             <div className="item">
               <div className="ui buttons">
                 <button
-                  className={`ui primary button ${isCallingNL2SQL ? 'loading' : ''}`}
+                  className={`ui primary button`}
                   onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
                   NL2SQL
                 </button>

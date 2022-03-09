@@ -1,39 +1,52 @@
 import * as React from 'react';
-import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel';
 import { useAppDispatch } from '../hooks/redux';
 import { setTargetSQL } from '../actions/nl2sql';
 
 export default function FormalQueryList(props) {
   const dispatch = useAppDispatch();
-  const handleChange = (ev) => {
-    dispatch(setTargetSQL(ev.target.value));
+
+  const onSelectionChange = (value) => {
+    dispatch(setTargetSQL(value));
   };
 
-  let count = 0;
+  const count = 0;
   return (
-    <FormControl>
-      <FormLabel id="demo-radio-buttons-group-label">Formal SQL</FormLabel>
-      <RadioGroup
-        aria-labelledby="demo-radio-buttons-group-label"
-        defaultValue="0"
-        name="radio-buttons-group">
-        {props.array.map((val) => {
-          count = count + 1;
-          return (
-            <FormControlLabel
-              key={count}
-              value={val}
-              onChange={handleChange}
-              control={<Radio />}
-              label={val}
-            />
-          );
-        })}
-      </RadioGroup>
-    </FormControl>
+    <div className="ui form">
+      <div className="grouped fields">
+        {props.array && props.array.length > 0 ? (
+          <div className="ui small header" id="demo-radio-buttons-group-label">
+            Generated SQL Queries
+          </div>
+        ) : (
+          <div className="ui grey tiny header" id="demo-radio-buttons-group-label">
+            <em>Generated SQL Queries will appear here</em>
+          </div>
+        )}
+
+        {props.isLoading ? (
+          <div className="ui active inverted dimmer">
+            <div className="ui text loader">Generating Queries</div>
+          </div>
+        ) : (
+          props.array.map((sqlValue, i) => (
+            <div className="field" key={i}>
+              <div
+                className="ui radio checkbox"
+                onClick={() => {
+                  onSelectionChange(sqlValue);
+                }}>
+                <input
+                  type="radio"
+                  name={'option_' + i}
+                  checked={sqlValue == props.selected}
+                  className="hidden"
+                />
+                <label>{sqlValue}</label>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
