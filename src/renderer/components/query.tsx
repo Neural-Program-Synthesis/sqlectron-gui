@@ -18,7 +18,7 @@ import { Query } from '../reducers/queries';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchAllTableColumns } from '../actions/columns';
 import { fetchTablesIfNeeded } from '../actions/tables';
-import { fetchSQLQuery } from '../actions/nl2sql';
+import { fetchSQLQuery, clearEverything } from '../actions/nl2sql';
 
 require('./react-resizable.css');
 require('./override-ace.css');
@@ -293,6 +293,7 @@ const Query: FC<Props> = ({
 
   const onDiscQueryClick = useCallback(() => {
     onSQLChange('');
+    dispatch(clearEverything());
   }, [onSQLChange]);
 
   const handleCancelQueryClick = useCallback(() => {
@@ -422,9 +423,10 @@ const Query: FC<Props> = ({
             </>
           </ResizableBox>
           <ResizableBox
-            className="react-resizable react-resizable-se-resize ui segment itemlist"
+            className="react-resizable react-resizable-se-resize no-padding ui raised segment itemlist"
             height={QUERY_EDITOR_HEIGTH}
             width={500}
+            // style= {{padding: 0 }}
             onResizeStop={onQueryBoxResize}>
             <>
               <FormalQueryList
