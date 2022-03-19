@@ -5,12 +5,16 @@ export interface NL2SQLState {
   queries: Array<string>;
   selectedQuery: string;
   isCalling: boolean;
+  events: Array<any>;
+  // lastNL: string;
 }
 
 const INITIAL_STATE: NL2SQLState = {
   queries: [],
   selectedQuery: '',
   isCalling: false,
+  events: [],
+  // lastNL: ''
 };
 
 const NL2SQLReducer: Reducer<NL2SQLState> = function (
@@ -30,6 +34,7 @@ const NL2SQLReducer: Reducer<NL2SQLState> = function (
         ...state,
         queries: action.queries,
         isCalling: false,
+        // lastNL: action.lastNL
       };
     }
     case types.FETCH_SQL_FAILURE: {
@@ -49,6 +54,20 @@ const NL2SQLReducer: Reducer<NL2SQLState> = function (
       return {
         ...state,
         isCalling: false,
+      };
+    }
+    case types.CLEAR_EVERYTHING: {
+      return {
+        ...state,
+        queries: [],
+        selectedQuery: '',
+        isCalling: false,
+      };
+    }
+    case types.LOG_EVENT: {
+      return {
+        ...state,
+        events: state.events.concat([action.event]),
       };
     }
     default:

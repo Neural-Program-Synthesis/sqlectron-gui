@@ -37,6 +37,10 @@
   font-family: Icons;
 }
 
+.no-padding {
+  padding: 0;
+}
+
 .react-resizable-se-resize .react-resizable-handle {
   position: absolute;
   width: 20px;
