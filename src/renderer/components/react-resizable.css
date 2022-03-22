@@ -60,3 +60,13 @@
   height: 100%;
   cursor: col-resize !important;
 }
+
+.alert-shown {
+  opacity: 1;
+  transition: all 250ms linear;
+}
+
+.alert-hidden {
+  opacity: 0;
+  transition: all 250ms linear 2s;
+}

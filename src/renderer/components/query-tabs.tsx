@@ -5,6 +5,7 @@ import Query from './query';
 import TabList from './tab-list';
 
 import * as QueryActions from '../actions/queries';
+import * as LoggingActions from '../actions/logging';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import QueryTab from './query-tab';
 import { DB_CLIENTS } from '../api';
@@ -49,6 +50,30 @@ const QueryTabs: FC<Props> = ({ sideBarWidth, queryRefs, onSelectToggle }) => {
       dispatch(QueryActions.copyToClipboard(rows, type, delimiter));
     },
     [dispatch],
+  );
+
+  const copy = (str) => {
+    navigator.clipboard.writeText(str);
+  };
+
+  const LogInfo = useCallback(
+    (logType: string, editorContent: string, schema: [], allSQLQueries: []) => {
+      if (!editorContent) {
+        return;
+      }
+      const data = {
+        interaction: logType,
+        editorContent: editorContent,
+        timestamp: new Date().getTime(),
+        sqlschema: schema,
+      };
+      if (allSQLQueries) {
+        data['allSQLQueries'] = allSQLQueries;
+      }
+
+      dispatch(LoggingActions.logEvent(data));
+    },
+    [dispatch, currentQuery],
   );
 
   const saveToFile = useCallback(
@@ -151,10 +176,12 @@ const QueryTabs: FC<Props> = ({ sideBarWidth, queryRefs, onSelectToggle }) => {
           onExecQueryClick={handleExecuteQuery}
           onCancelQueryClick={handleCancelQuery}
           onCopyToClipboardClick={copyToClipboard}
+          onCopyToClipboardEditorClick={copy}
           onSaveToFileClick={saveToFile}
           onSQLChange={onSQLChange}
           onSelectionChange={onQuerySelectionChange}
           onSelectToggle={onSelectToggle}
+          loggingInfo={LogInfo}
         />
       </TabPanel>
     );

@@ -1,6 +1,6 @@
 import { ThunkResult } from '../reducers';
 import { requestSQL } from '../api/index';
-import { uniq } from 'lodash';
+// import { uniq } from 'lodash';
 
 export const FETCH_SQL_REQUEST = 'FETCH_SQL_REQUEST';
 export const FETCH_SQL_SUCCESS = 'FETCH_SQL_SUCCESS';
@@ -9,8 +9,7 @@ export const FETCH_SQL_IN_PROGRESS = 'FETCH_SQL_IN_PROGRESS';
 export const CLEAR_EVERYTHING = 'CLEAR_EVERYTHING';
 export const SET_SQL_SUCCESS = 'SET_SQL_SUCCESS';
 export const SET_SQL_FAILUER = 'SET_SQL_FAILUER';
-
-export const LOG_EVENT = 'LOG_EVENT';
+const TopNQuery = 3;
 
 // import WebSocket from "ws";
 
@@ -22,7 +21,7 @@ export function fetchSQLQuery(query?: string, schema?: string): ThunkResult<void
     const data = {
       query: query,
       sqlschema: schema,
-      n: 3,
+      n: TopNQuery,
     };
     // const ws = new WebSocket("wss://www.example.com/socketserver");
     const tStart = performance.now();
@@ -57,11 +56,5 @@ export function setTargetSQL(query?: string): ThunkResult<void> {
     } catch (error) {
       dispatch({ type: SET_SQL_FAILUER, error });
     }
-  };
-}
-
-export function logEvent(event): ThunkResult<void> {
-  return (dispatch) => {
-    dispatch({ type: LOG_EVENT, event: event });
   };
 }

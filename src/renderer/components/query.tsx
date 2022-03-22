@@ -16,9 +16,9 @@ import { BROWSER_MENU_EDITOR_FORMAT } from '../../common/event';
 import MenuHandler from '../utils/menu';
 import { Query } from '../reducers/queries';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchAllTableColumns } from '../actions/columns';
 import { fetchTablesIfNeeded } from '../actions/tables';
 import { fetchSQLQuery, clearEverything } from '../actions/nl2sql';
+import { NL2SQLClick, SQLQueryExecuted, CopyQueryButtonClicked } from '../actions/logging';
 
 require('./react-resizable.css');
 require('./override-ace.css');
@@ -53,10 +53,12 @@ interface Props {
   onExecQueryClick: (sqlQuery: string) => void;
   onCancelQueryClick: () => void;
   onCopyToClipboardClick: (rows, type: string, delimiter?: string) => void;
+  onCopyToClipboardEditorClick: (text: string) => void;
   onSaveToFileClick: (rows, type: string, delimiter?: string) => void;
   onSQLChange: (sqlQuery: string) => void;
   onSelectionChange: (sqlQuery: string, selectedQuery: string) => void;
   onSelectToggle: (database: string) => void;
+  loggingInfo: (logType: string, editorContent: string, schema: [], allSQLQueries: []) => void;
 }
 
 const Query: FC<Props> = ({
@@ -69,10 +71,12 @@ const Query: FC<Props> = ({
   onExecQueryClick,
   onCancelQueryClick,
   onCopyToClipboardClick,
+  onCopyToClipboardEditorClick,
   onSaveToFileClick,
   onSQLChange,
   onSelectionChange,
   onSelectToggle,
+  loggingInfo,
 }) => {
   const {
     isCurrentQuery,
@@ -116,6 +120,7 @@ const Query: FC<Props> = ({
   const [wrapEnabled, setWrapEnabled] = useState(false);
 
   // const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
+  const [isShowingCopiedAlert, setShowingCopiedAlert] = useState(false);
 
   const [isColumnsFetch, setIsColumnsFetch] = useState(false);
   const [isTableFetched, setIsTableFetch] = useState(false);
@@ -259,6 +264,17 @@ const Query: FC<Props> = ({
     }
   }, [onSelectToggle, query]);
 
+  useEffect(() => {
+    const timeId = setTimeout(() => {
+      // After 3 seconds set the show value to false
+      setShowingCopiedAlert(false);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeId);
+    };
+  }, [isShowingCopiedAlert]);
+
   // when a generated query is selected, set editor content to it
   useEffect(() => {
     if (selectedGeneratedQuery && selectedGeneratedQuery.length >= 1) {
@@ -277,19 +293,40 @@ const Query: FC<Props> = ({
     }
   }, [onSQLChange, selectedGeneratedQuery]);
 
+  const handleCopyText = useCallback(
+    (tablecolumns, nl2SqlGeneratedQueries) => {
+      const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
+      onCopyToClipboardEditorClick(sqlQuery);
+      setShowingCopiedAlert(true);
+      if (sqlQuery) {
+        loggingInfo(CopyQueryButtonClicked, sqlQuery, tablecolumns, nl2SqlGeneratedQueries);
+      }
+    },
+    [onCopyToClipboardEditorClick, selectedGeneratedQuery],
+  ); //query.query, editorRef
+
   const handleNL2SQLQueryClick = useCallback(
     (tablecolumns) => {
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
       dispatch(fetchSQLQuery(copyText, tablecolumns));
+      if (copyText) {
+        loggingInfo(NL2SQLClick, copyText, tablecolumns, []);
+      }
     },
     [onSQLChange, editorRef, onSelectToggle],
   );
 
-  const handleExecQueryClick = useCallback(() => {
-    const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
-    onExecQueryClick(sqlQuery);
-  }, [onExecQueryClick, selectedGeneratedQuery]); //query.query, editorRef
+  const handleExecQueryClick = useCallback(
+    (tablecolumns, nl2SqlGeneratedQueries) => {
+      const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
+      onExecQueryClick(sqlQuery);
+      if (sqlQuery) {
+        loggingInfo(SQLQueryExecuted, sqlQuery, tablecolumns, nl2SqlGeneratedQueries);
+      }
+    },
+    [onExecQueryClick, selectedGeneratedQuery],
+  ); //query.query, editorRef
 
   const onDiscQueryClick = useCallback(() => {
     onSQLChange('');
@@ -433,10 +470,20 @@ const Query: FC<Props> = ({
                 isLoading={isCallingNL2SQL}
                 array={nl2SqlGeneratedQueries}
                 selected={selectedGeneratedQuery}
+                loggingInfo={loggingInfo}
+                schema={tablecolumns}
               />
             </>
           </ResizableBox>
         </div>
+        {isShowingCopiedAlert && (
+          <div className={`alert alert-success`}>
+            <div className="ui success message">
+              <div className="header">Text has been copied!</div>
+              <p>You may now click Ctrl + V to paste it to anywhere.</p>
+            </div>
+          </div>
+        )}
 
         <div className="ui secondary menu" style={{ marginTop: 0 }}>
           {infos && (
@@ -455,6 +502,14 @@ const Query: FC<Props> = ({
             <div className="item">
               <div className="ui buttons">
                 <button
+                  className={`ui teal button`}
+                  onClick={() => {
+                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
+                  }}>
+                  CopyEditor
+                </button>
+
+                <button
                   className={`ui primary button`}
                   onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
                   NL2SQL
@@ -462,7 +517,7 @@ const Query: FC<Props> = ({
 
                 <button
                   className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
-                  onClick={handleExecQueryClick}>
+                  onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
                   Execute
                 </button>
                 <div className="or" />
@@ -482,6 +537,7 @@ const Query: FC<Props> = ({
           </div>
         </div>
       </div>
+
       <QueryResults
         widthOffset={widthOffset}
         heightOffset={QUERY_EDITOR_HEIGTH}

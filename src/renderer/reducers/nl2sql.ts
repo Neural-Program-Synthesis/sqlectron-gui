@@ -64,12 +64,6 @@ const NL2SQLReducer: Reducer<NL2SQLState> = function (
         isCalling: false,
       };
     }
-    case types.LOG_EVENT: {
-      return {
-        ...state,
-        events: state.events.concat([action.event]),
-      };
-    }
     default:
       return state;
   }
