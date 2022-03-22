@@ -1,16 +1,19 @@
 import { ThunkResult } from '../reducers';
-import { requestSQL } from '../api/index';
-import { uniq } from 'lodash';
+import { requestSQL, requestEdit } from '../api/index';
+// import { uniq } from 'lodash';
 
-export const FETCH_SQL_REQUEST = 'FETCH_SQL_REQUEST';
 export const FETCH_SQL_SUCCESS = 'FETCH_SQL_SUCCESS';
 export const FETCH_SQL_FAILURE = 'FETCH_SQL_FAILURE';
 export const FETCH_SQL_IN_PROGRESS = 'FETCH_SQL_IN_PROGRESS';
+
+export const EDIT_SQL_SUCCESS = 'EDIT_SQL_SUCCESS';
+export const EDIT_SQL_FAILURE = 'EDIT_SQL_FAILURE';
+export const EDIT_SQL_IN_PROGRESS = 'EDIT_SQL_IN_PROGRESS';
+
 export const CLEAR_EVERYTHING = 'CLEAR_EVERYTHING';
 export const SET_SQL_SUCCESS = 'SET_SQL_SUCCESS';
-export const SET_SQL_FAILUER = 'SET_SQL_FAILUER';
-
-export const LOG_EVENT = 'LOG_EVENT';
+export const SET_SQL_FAILURE = 'SET_SQL_FAILURE';
+const TopNQuery = 3;
 
 // import WebSocket from "ws";
 
@@ -22,7 +25,7 @@ export function fetchSQLQuery(query?: string, schema?: string): ThunkResult<void
     const data = {
       query: query,
       sqlschema: schema,
-      n: 3,
+      n: TopNQuery,
     };
     // const ws = new WebSocket("wss://www.example.com/socketserver");
     const tStart = performance.now();
@@ -31,15 +34,37 @@ export function fetchSQLQuery(query?: string, schema?: string): ThunkResult<void
       // console.log('Time taken: ', tEnd - tStart);
       const queries = JSON.parse(resp['data'])['generated'];
       // eliminate duplicate queries
-      const uniqueQueries = queries.filter(({ sql, source }, index) => {
-        return queries.map(({ sql, source }) => sql).indexOf(sql) === index;
+      const uniqueQueries = queries.filter(({ sql }, index) => {
+        return queries.map(({ sql }) => sql).indexOf(sql) === index;
       });
       return uniqueQueries;
     });
     try {
-      dispatch({ type: FETCH_SQL_SUCCESS, queries: sql_query });
+      const annotation = `Generated from "${query}"`;
+      dispatch({ type: FETCH_SQL_SUCCESS, queries: sql_query, annotation: annotation });
     } catch (error) {
       dispatch({ type: FETCH_SQL_FAILURE, error });
+    }
+  };
+}
+
+export function editSQL({ query, selection, command, schema }) {
+  return async (dispatch) => {
+    dispatch({ type: EDIT_SQL_IN_PROGRESS });
+
+    try {
+      const editResponse = await requestEdit({
+        query: query,
+        command: command,
+        sqlschema: schema,
+        selection: selection,
+      });
+      const editedQuery = await JSON.parse(editResponse.data);
+
+      const annotation = `Edited from "${query}" with command "${command}"`;
+      dispatch({ type: EDIT_SQL_SUCCESS, editedQuery: editedQuery, annotation: annotation });
+    } catch (error) {
+      dispatch({ type: EDIT_SQL_FAILURE, error: String(error) });
     }
   };
 }
@@ -55,13 +80,7 @@ export function setTargetSQL(query?: string): ThunkResult<void> {
     try {
       dispatch({ type: SET_SQL_SUCCESS, selectedQuery: query });
     } catch (error) {
-      dispatch({ type: SET_SQL_FAILUER, error });
+      dispatch({ type: SET_SQL_FAILURE, error });
     }
-  };
-}
-
-export function logEvent(event): ThunkResult<void> {
-  return (dispatch) => {
-    dispatch({ type: LOG_EVENT, event: event });
   };
 }
