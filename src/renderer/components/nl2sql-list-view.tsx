@@ -2,6 +2,8 @@ import * as React from 'react';
 import { useAppDispatch } from '../hooks/redux';
 import { setTargetSQL } from '../actions/nl2sql';
 
+import { SQLQuerySelected } from '../actions/logging';
+
 // const colormap = {
 //   sql: {
 
@@ -14,8 +16,10 @@ import { setTargetSQL } from '../actions/nl2sql';
 export default function FormalQueryList(props) {
   const dispatch = useAppDispatch();
 
-  const onSelectionChange = (value) => {
+  const allSQLs = props.array.map(({ sql, source }, i) => sql);
+  const onSelectionChange = (value, loggingInfo, schema) => {
     dispatch(setTargetSQL(value));
+    loggingInfo(SQLQuerySelected, value, schema, allSQLs);
   };
   const count = 0;
   return (
@@ -38,7 +42,7 @@ export default function FormalQueryList(props) {
               className="ui item"
               key={i}
               onClick={() => {
-                onSelectionChange(sql);
+                onSelectionChange(sql, props.loggingInfo, props.schema);
               }}>
               {source.length > 0 && <span className="ui label teal">{source}</span>}
               <div>{sql}</div>
