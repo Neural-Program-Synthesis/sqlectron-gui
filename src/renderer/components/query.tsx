@@ -17,7 +17,8 @@ import MenuHandler from '../utils/menu';
 import { Query } from '../reducers/queries';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchTablesIfNeeded } from '../actions/tables';
-import { fetchSQLQuery, clearEverything } from '../actions/nl2sql';
+import { fetchSQLQuery, clearEverything, editSQL } from '../actions/nl2sql';
+import { voiceCommand } from '../actions/voiceCommands';
 import { NL2SQLClick, SQLQueryExecuted, CopyQueryButtonClicked } from '../actions/logging';
 
 require('./react-resizable.css');
@@ -94,7 +95,13 @@ const Query: FC<Props> = ({
     tablecolumns,
     nl2SqlGeneratedQueries,
     selectedGeneratedQuery,
+    nl2SqlAnnotation,
     isCallingNL2SQL,
+    isCallingEditSQL,
+    nl2sqlError,
+    voiceParsedCommandText,
+    voiceParsedCommandConfidence,
+    voiceErrorMessage,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -111,7 +118,13 @@ const Query: FC<Props> = ({
     tablecolumns: state.tablecolumns,
     nl2SqlGeneratedQueries: state.nl2sqls.queries,
     selectedGeneratedQuery: state.nl2sqls.selectedQuery,
+    nl2SqlAnnotation: state.nl2sqls.annotation,
     isCallingNL2SQL: state.nl2sqls.isCalling,
+    isCallingEditSQL: state.nl2sqls.isEditing,
+    nl2sqlError: state.nl2sqls.errorMessage,
+    voiceParsedCommandText: state.voiceCommands.parsedCommandText,
+    voiceParsedCommandConfidence: state.voiceCommands.parsedCommandConfidence,
+    voiceErrorMessage: state.voiceCommands.errorMessage,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -119,11 +132,13 @@ const Query: FC<Props> = ({
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [wrapEnabled, setWrapEnabled] = useState(false);
 
-  // const [isCallingNL2SQL, setIsCallingNL2SQL] = useState(false);
   const [isShowingCopiedAlert, setShowingCopiedAlert] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   const [isColumnsFetch, setIsColumnsFetch] = useState(false);
   const [isTableFetched, setIsTableFetch] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder>();
+
   const editorRef = useRef<AceEditor>(null);
 
   const dispatch = useAppDispatch();
@@ -275,23 +290,62 @@ const Query: FC<Props> = ({
     };
   }, [isShowingCopiedAlert]);
 
+  // Initialize the media recorder, only do it once
+  useEffect(() => {
+    if (!mediaRecorderRef.current) {
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: true,
+          video: false,
+        })
+        .then((stream) => {
+          const recorder = new MediaRecorder(stream);
+
+          recorder.addEventListener('dataavailable', (event) => {
+            // const audioUrl = URL.createObjectURL(event.data);
+            // const audio = new Audio(audioUrl);
+            // audio.play();
+            dispatch(voiceCommand(event.data));
+          });
+
+          mediaRecorderRef.current = recorder;
+        });
+    }
+  }, []);
+
   // when a generated query is selected, set editor content to it
   useEffect(() => {
     if (selectedGeneratedQuery && selectedGeneratedQuery.length >= 1) {
-      let copyText =
-        editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
-
-      if (copyText?.startsWith('-- Generated from')) {
-        copyText = copyText.split('\n')[0].split('-- Generated from: "')[1].slice(0, -1);
-      }
-
-      let formatted = `${selectedGeneratedQuery}`;
-      if (copyText && copyText.length > 0) {
-        formatted = `-- Generated from: "${copyText.trim()}"\n` + formatted;
-      }
+      const formatted = `-- ${nl2SqlAnnotation}\n${selectedGeneratedQuery}`;
       onSQLChange(formatted);
     }
   }, [onSQLChange, selectedGeneratedQuery]);
+
+  useEffect(() => {
+    if (voiceErrorMessage && voiceErrorMessage.length > 0) {
+      // console.warn(voiceErrorMessage);
+      return;
+    }
+    if (!voiceParsedCommandText || voiceParsedCommandText.length == 0) {
+      return;
+    }
+
+    const editorText =
+      editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
+    const sqlLines = editorText?.split('\n').filter((val) => !val.startsWith('--'));
+    const queryToUse = sqlLines?.join('\n').trim();
+
+    if (queryToUse && queryToUse.length > 0) {
+      dispatch(
+        editSQL({
+          query: queryToUse,
+          selection: null,
+          command: voiceParsedCommandText,
+          schema: tablecolumns,
+        }),
+      );
+    }
+  }, [voiceParsedCommandText, voiceParsedCommandConfidence, voiceErrorMessage]);
 
   const handleCopyText = useCallback(
     (tablecolumns, nl2SqlGeneratedQueries) => {
@@ -327,6 +381,20 @@ const Query: FC<Props> = ({
     },
     [onExecQueryClick, selectedGeneratedQuery],
   ); //query.query, editorRef
+
+  const onRecordingClick = useCallback(() => {
+    if (isRecording) {
+      setIsRecording(false);
+      const recorder = mediaRecorderRef.current;
+      if (!recorder) {
+        return;
+      }
+      recorder.stop();
+    } else {
+      setIsRecording(true);
+      mediaRecorderRef.current?.start();
+    }
+  }, [isRecording]);
 
   const onDiscQueryClick = useCallback(() => {
     onSQLChange('');
@@ -498,23 +566,45 @@ const Query: FC<Props> = ({
               </span>
             </div>
           )}
-          <div className="right menu">
+          <div className="left menu">
             <div className="item">
               <div className="ui buttons">
-                <button
-                  className={`ui teal button`}
-                  onClick={() => {
-                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
-                  }}>
-                  CopyEditor
-                </button>
-
                 <button
                   className={`ui primary button`}
                   onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
                   NL2SQL
                 </button>
+                <button
+                  className="ui teal button"
+                  onClick={() => {
+                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
+                  }}>
+                  Copy to Clipboard
+                </button>
 
+                {isRecording ? (
+                  <div className="ui red button" onClick={onRecordingClick}>
+                    <i className="x icon"></i> Listening&nbsp;&nbsp;
+                    <div className="ui active inline tiny loader"></div>
+                  </div>
+                ) : (
+                  <div className="ui red button" onClick={onRecordingClick}>
+                    <i className="microphone icon"></i> Record Command
+                  </div>
+                )}
+                <button
+                  className="ui labeled red button"
+                  onClick={() => {
+                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
+                  }}>
+                  Copy to Clipboard
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="right menu">
+            <div className="item">
+              <div className="ui buttons">
                 <button
                   className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
                   onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>

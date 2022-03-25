@@ -15,6 +15,7 @@ import triggers, { TriggerState } from './triggers';
 import indexes, { IndexState } from './indexes';
 import sqlscripts, { ScriptState } from './sqlscripts';
 import nl2sqls, { NL2SQLState } from './nl2sql';
+import voiceCommands, { VoiceCommandState } from './voiceCommands';
 import keys, { KeyState } from './keys';
 import tablecolumns, { TableColumnState } from './table_columns';
 
@@ -39,6 +40,7 @@ export interface ApplicationState {
   sqlscripts: ScriptState;
   keys: KeyState;
   nl2sqls: NL2SQLState;
+  voiceCommands: VoiceCommandState;
 }
 
 const rootReducer: Reducer<ApplicationState> = combineReducers<ApplicationState>({
@@ -59,6 +61,7 @@ const rootReducer: Reducer<ApplicationState> = combineReducers<ApplicationState>
   sqlscripts,
   keys,
   nl2sqls,
+  voiceCommands,
 });
 
 export default rootReducer;

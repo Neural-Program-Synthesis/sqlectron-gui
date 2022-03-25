@@ -1,6 +1,5 @@
 import { ThunkResult } from '../reducers';
 import { requestLogging } from '../api/index';
-// import { uniq } from 'lodash';
 
 // for interaction in payload
 export const NL2SQLClick = 'NL2SQLClick';

@@ -16,10 +16,9 @@ import { SQLQuerySelected } from '../actions/logging';
 export default function FormalQueryList(props) {
   const dispatch = useAppDispatch();
 
-  const allSQLs = props.array.map(({ sql, source }, i) => sql);
   const onSelectionChange = (value, loggingInfo, schema) => {
     dispatch(setTargetSQL(value));
-    loggingInfo(SQLQuerySelected, value, schema, allSQLs);
+    loggingInfo(SQLQuerySelected, value, schema, props.array);
   };
   const count = 0;
   return (
