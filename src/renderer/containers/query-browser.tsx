@@ -25,6 +25,7 @@ import { fetchViewsIfNeeded } from '../actions/views';
 import { fetchRoutinesIfNeeded } from '../actions/routines';
 import { getSQLScriptIfNeeded } from '../actions/sqlscripts';
 import { fetchTableKeysIfNeeded } from '../actions/keys';
+import { clearEverything } from '../actions/nl2sql';
 import DatabaseFilter from '../components/database-filter';
 import DatabaseList from '../components/database-list';
 import DatabaseDiagramModal from '../components/database-diagram-modal';
@@ -151,6 +152,7 @@ const QueryBrowserContainer: FC = () => {
 
   const onPromptCancelClick = useCallback(() => {
     dispatch(ConnActions.disconnect());
+    dispatch(clearEverything());
   }, [dispatch]);
 
   const onPromptOKClick = useCallback(
@@ -162,6 +164,7 @@ const QueryBrowserContainer: FC = () => {
 
   const onCloseConnectionClick = useCallback(() => {
     dispatch(ConnActions.disconnect());
+    dispatch(clearEverything());
   }, [dispatch]);
 
   const onReConnectionClick = useCallback(() => {

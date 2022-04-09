@@ -13,13 +13,14 @@ export const EDIT_SQL_IN_PROGRESS = 'EDIT_SQL_IN_PROGRESS';
 export const CLEAR_EVERYTHING = 'CLEAR_EVERYTHING';
 export const SET_SQL_SUCCESS = 'SET_SQL_SUCCESS';
 export const SET_SQL_FAILURE = 'SET_SQL_FAILURE';
+
 const TopNQuery = 3;
 
 // import WebSocket from "ws";
 
 // get schema, query
 // return formal sql string
-export function fetchSQLQuery(query?: string, schema?: string): ThunkResult<void> {
+export function fetchSQLQuery(query?: string, schema?: any): ThunkResult<void> {
   return async (dispatch) => {
     dispatch({ type: FETCH_SQL_IN_PROGRESS });
     const data = {

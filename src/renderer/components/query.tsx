@@ -150,6 +150,12 @@ const Query: FC<Props> = ({
     }
   }, [onSelectionChange, query.query, editorRef]);
 
+  const rowColumnToFlat = (row: number, column: number, text: string) => {
+    const prevRows = text.split('\n').slice(0, row);
+    const previousLengths = prevRows.map((line) => line.length);
+    return column + previousLengths.reduce((a, b) => a + b, 0);
+  };
+
   useEffect(() => {
     if (!editorRef.current) {
       return;
@@ -330,22 +336,30 @@ const Query: FC<Props> = ({
       return;
     }
 
-    const editorText =
-      editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
+    const editorText = editorRef.current?.editor.getValue();
     const sqlLines = editorText?.split('\n').filter((val) => !val.startsWith('--'));
     const queryToUse = sqlLines?.join('\n').trim();
 
     if (queryToUse && queryToUse.length > 0) {
+      const selectionRange = editorRef.current?.editor.getSelectionRange();
+      const selection = selectionRange &&
+        editorText && [
+          rowColumnToFlat(selectionRange.start.row, selectionRange.start.column, editorText),
+          rowColumnToFlat(selectionRange.end.row, selectionRange.end.column, editorText),
+        ];
+      const selectionIfExists = selection && selection[0] !== selection[1] ? selection : undefined;
       dispatch(
         editSQL({
           query: queryToUse,
-          selection: null,
+          selection: selectionIfExists,
           command: voiceParsedCommandText,
           schema: tablecolumns,
         }),
       );
+    } else {
+      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns));
     }
-  }, [voiceParsedCommandText, voiceParsedCommandConfidence, voiceErrorMessage]);
+  }, [voiceParsedCommandText, voiceErrorMessage]);
 
   const handleCopyText = useCallback(
     (tablecolumns, nl2SqlGeneratedQueries) => {

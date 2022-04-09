@@ -25,9 +25,7 @@ const tableColumnReducer: Reducer<TableColumnState> = function (
 ): TableColumnState {
   switch (action.type) {
     case table_types.FETCH_TABLES_SUCCESS: {
-      let newstate = {
-        ...state,
-      };
+      let newstate = {};
       for (let i = 0; i < action.tables.length; i++) {
         if (!(action.tables[i].name in state))
           newstate = {

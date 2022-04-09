@@ -35,19 +35,21 @@ export default function FormalQueryList(props) {
           <div className="ui text loader">Generating Queries</div>
         </div>
       ) : (
-        <div className="ui fluid vertical menu">
-          {props.array.map(({ sql, source }, i) => (
-            <a
-              className="ui item"
-              key={i}
-              onClick={() => {
-                onSelectionChange(sql, props.loggingInfo, props.schema);
-              }}>
-              {source.length > 0 && <span className="ui label teal">{source}</span>}
-              <div>{sql}</div>
-            </a>
-          ))}
-        </div>
+        props.array.length > 0 && (
+          <div className="ui fluid vertical menu">
+            {props.array.map(({ sql, source }, i) => (
+              <a
+                className="ui item"
+                key={i}
+                onClick={() => {
+                  onSelectionChange(sql, props.loggingInfo, props.schema);
+                }}>
+                {source.length > 0 && <span className="ui label teal">{source}</span>}
+                <div>{sql}</div>
+              </a>
+            ))}
+          </div>
+        )
       )}
     </React.Fragment>
   );
