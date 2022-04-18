@@ -10,6 +10,9 @@ export interface NL2SQLState {
   events: Array<any>;
   isEditing: boolean;
   errorMessage: string;
+  selectedCellRow: number;
+  selectedCellCol: string;
+  selectedCellIsHeader: boolean;
   // lastNL: string;
 }
 
@@ -21,6 +24,9 @@ const INITIAL_STATE: NL2SQLState = {
   events: [],
   isEditing: false,
   errorMessage: '',
+  selectedCellRow: -1,
+  selectedCellCol: '',
+  selectedCellIsHeader: false,
   // lastNL: ''
 };
 
@@ -93,6 +99,22 @@ const NL2SQLReducer: Reducer<NL2SQLState> = function (
         isCalling: false,
       };
     }
+    case types.SELECT_CELL: {
+      return {
+        ...state,
+        selectedCellRow: action.row,
+        selectedCellCol: action.col,
+        selectedCellIsHeader: action.isHeader,
+      };
+    }
+    case types.UNSELECT_ALL: {
+      return {
+        ...state,
+        selectedCellRow: -1,
+        selectedCellCol: '',
+        selectedCellIsHeader: false,
+      };
+    }
     case types.CLEAR_EVERYTHING: {
       return {
         ...state,
@@ -102,6 +124,9 @@ const NL2SQLReducer: Reducer<NL2SQLState> = function (
         isCalling: false,
         isEditing: false,
         errorMessage: '',
+        selectedCellRow: -1,
+        selectedCellCol: '',
+        selectedCellIsHeader: false,
       };
     }
     default:

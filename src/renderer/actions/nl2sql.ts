@@ -14,6 +14,9 @@ export const CLEAR_EVERYTHING = 'CLEAR_EVERYTHING';
 export const SET_SQL_SUCCESS = 'SET_SQL_SUCCESS';
 export const SET_SQL_FAILURE = 'SET_SQL_FAILURE';
 
+export const SELECT_CELL = 'SELECT_CELL';
+export const UNSELECT_ALL = 'UNSELECT_ALL';
+
 const TopNQuery = 3;
 
 // import WebSocket from "ws";
@@ -67,6 +70,26 @@ export function editSQL({ query, selection, command, schema }) {
     } catch (error) {
       dispatch({ type: EDIT_SQL_FAILURE, error: String(error) });
     }
+  };
+}
+
+export function selectCell({
+  row,
+  col,
+  isHeader,
+}: {
+  row: number;
+  col: string;
+  isHeader: boolean;
+}) {
+  return (dispatch) => {
+    dispatch({ type: SELECT_CELL, row, col, isHeader });
+  };
+}
+
+export function unselectAll() {
+  return (dispatch) => {
+    dispatch({ type: UNSELECT_ALL });
   };
 }
 

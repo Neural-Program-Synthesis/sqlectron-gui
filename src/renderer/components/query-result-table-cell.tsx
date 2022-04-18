@@ -4,6 +4,8 @@ import React, { FC, MouseEvent, useCallback, useEffect, useState } from 'react';
 import ContextMenu from '../utils/context-menu';
 import * as eventKeys from '../../common/event';
 import { valueToString } from '../../common/utils/convert';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { selectCell, unselectAll } from '../actions/nl2sql';
 
 const MENU_CTX_ID = 'CONTEXT_MENU_TABLE_CELL';
 
@@ -17,6 +19,9 @@ interface Props {
 const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewClick }) => {
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [showMenuEvent, setShowMenuEvent] = useState<MouseEvent | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     if (contextMenu) {
@@ -25,6 +30,31 @@ const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewCli
       };
     }
   }, [contextMenu]);
+
+  const { isSelected } = useAppSelector((state) => ({
+    isSelected:
+      col === state.nl2sqls.selectedCellCol &&
+      (rowIndex === state.nl2sqls.selectedCellRow || state.nl2sqls.selectedCellIsHeader),
+  }));
+
+  const onClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+
+      if (isSelected) {
+        dispatch(unselectAll());
+      } else {
+        dispatch(
+          selectCell({
+            row: rowIndex,
+            col: col,
+            isHeader: false,
+          }),
+        );
+      }
+    },
+    [isSelected, rowIndex, col],
+  );
 
   const getValue = useCallback(() => {
     return data[rowIndex][col];
@@ -67,13 +97,32 @@ const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewCli
   }, [contextMenu, showMenuEvent]);
 
   const value = getValue();
-  const className = classNames({
+
+  const divClassName = classNames(
+    {
+      item: true,
+    },
+    {
+      'ui teal': isSelected,
+    },
+  );
+
+  const spanClassName = classNames({
     'ui mini grey label table-cell-type-null': value === null,
   });
 
   return (
-    <div className="item" onContextMenu={onContextMenu}>
-      {value === null ? <span className={className}>NULL</span> : valueToString(value)}
+    <div
+      style={{
+        backgroundColor: isSelected ? '#dbeeff' : 'white',
+        cursor: isHovered ? 'pointer' : 'default',
+      }}
+      className={divClassName}
+      onContextMenu={onContextMenu}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
+      {value === null ? <span className={spanClassName}>NULL</span> : valueToString(value)}
     </div>
   );
 };
