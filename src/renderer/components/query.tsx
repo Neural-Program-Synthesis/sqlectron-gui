@@ -170,6 +170,10 @@ const Query: FC<Props> = ({
     editor.completers = [];
     // @ts-ignore
     editor.setOption('enableBasicAutocompletion', false);
+    editor.setOption(
+      'placeholder',
+      '\n\n\nType in SQL, or type in a natural language command and press "Generate SQL Suggestions".\nYou can also press "Speak Command" to speak a natural language command.',
+    );
 
     editor.focus();
 
@@ -297,27 +301,27 @@ const Query: FC<Props> = ({
   }, [isShowingCopiedAlert]);
 
   // Initialize the media recorder, only do it once
-  useEffect(() => {
-    if (!mediaRecorderRef.current) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: false,
-        })
-        .then((stream) => {
-          const recorder = new MediaRecorder(stream);
+  // useEffect(() => {
+  //   if (!mediaRecorderRef.current) {
+  //     navigator.mediaDevices
+  //       .getUserMedia({
+  //         audio: true,
+  //         video: false,
+  //       })
+  //       .then((stream) => {
+  //         const recorder = new MediaRecorder(stream);
 
-          recorder.addEventListener('dataavailable', (event) => {
-            // const audioUrl = URL.createObjectURL(event.data);
-            // const audio = new Audio(audioUrl);
-            // audio.play();
-            dispatch(voiceCommand(event.data));
-          });
+  //         recorder.addEventListener('dataavailable', (event) => {
+  //           // const audioUrl = URL.createObjectURL(event.data);
+  //           // const audio = new Audio(audioUrl);
+  //           // audio.play();
+  //           dispatch(voiceCommand(event.data));
+  //         });
 
-          mediaRecorderRef.current = recorder;
-        });
-    }
-  }, []);
+  //         mediaRecorderRef.current = recorder;
+  //       });
+  //   }
+  // }, []);
 
   // when a generated query is selected, set editor content to it
   useEffect(() => {
@@ -550,6 +554,7 @@ const Query: FC<Props> = ({
             <>
               <FormalQueryList
                 isLoading={isCallingNL2SQL}
+                handleNL2SQLQueryClick={() => handleNL2SQLQueryClick(tablecolumns)}
                 array={nl2SqlGeneratedQueries}
                 selected={selectedGeneratedQuery}
                 loggingInfo={loggingInfo}
@@ -583,11 +588,6 @@ const Query: FC<Props> = ({
           <div className="left menu">
             <div className="item">
               <div className="ui buttons">
-                <button
-                  className={`ui primary button`}
-                  onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
-                  NL2SQL
-                </button>
                 <button
                   className="ui teal button"
                   onClick={() => {

@@ -14,9 +14,18 @@ interface Props {
   col: string;
   data: any;
   onOpenPreviewClick: (value: any) => void;
+  onHover: () => void;
+  onUnhover: () => void;
 }
 
-const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewClick }) => {
+const QueryResultTableCell: FC<Props> = ({
+  rowIndex,
+  col,
+  data,
+  onOpenPreviewClick,
+  onHover,
+  onUnhover,
+}) => {
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [showMenuEvent, setShowMenuEvent] = useState<MouseEvent | null>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -31,10 +40,14 @@ const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewCli
     }
   }, [contextMenu]);
 
-  const { isSelected } = useAppSelector((state) => ({
+  const { isSelected } = useAppSelector(({ nl2sqls }) => ({
     isSelected:
-      col === state.nl2sqls.selectedCellCol &&
-      (rowIndex === state.nl2sqls.selectedCellRow || state.nl2sqls.selectedCellIsHeader),
+      col === nl2sqls.selectedCellCol &&
+      (rowIndex === nl2sqls.selectedCellRow || nl2sqls.selectedCellIsHeader),
+    // isRowSelected:
+    //   (rowIndex === nl2sqls.selectedCellRow || nl2sqls.selectedCellIsHeader).every((item) => {
+
+    //   }),
   }));
 
   const onClick = useCallback(
@@ -111,6 +124,16 @@ const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewCli
     'ui mini grey label table-cell-type-null': value === null,
   });
 
+  const onMouseEnter = useCallback(() => {
+    setIsHovered(true);
+    onHover();
+  }, [onHover]);
+
+  const onMouseLeave = useCallback(() => {
+    setIsHovered(false);
+    onUnhover();
+  }, [onUnhover]);
+
   return (
     <div
       style={{
@@ -120,8 +143,8 @@ const QueryResultTableCell: FC<Props> = ({ rowIndex, col, data, onOpenPreviewCli
       className={divClassName}
       onContextMenu={onContextMenu}
       onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}>
       {value === null ? <span className={spanClassName}>NULL</span> : valueToString(value)}
     </div>
   );

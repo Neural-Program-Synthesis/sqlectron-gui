@@ -111,13 +111,16 @@ const QueryResultTable: FC<Props> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [valuePreview, setValuePreview] = useState<any>(null);
 
+  const [hoveredHeaderCell, setHoveredHeaderCell] = useState<string | null>(null);
+  // const [rowSelectIndicatorIndex, setRowSelectIndicatorIndex] = useState<number | null>(null);
+
   const [headerGrid, setHeaderGrid] = useState<any>(null);
   const [rowsGrid, setRowsGrid] = useState<any>(null);
 
   const previousOffsetWidth = usePrevious(widthOffset);
 
   const resize = useCallback(() => {
-    const newTableWidth = window.innerWidth - (widthOffset + 27);
+    const newTableWidth = window.innerWidth - (widthOffset + 27) - 10;
     const newTableHeight = window.innerHeight - (heightOffset + 225);
 
     let totalColumnWidths = 0;
@@ -364,15 +367,27 @@ const QueryResultTable: FC<Props> = ({
       return (
         <div
           className="item"
-          style={{ backgroundColor: isSelected ? '#dbeeff' : 'white' }}
-          onClick={onClick}>
+          style={{
+            backgroundColor: isSelected ? '#dbeeff' : 'white',
+            cursor: hoveredHeaderCell === field.name ? 'pointer' : 'default',
+          }}
+          onClick={onClick}
+          onMouseEnter={() => setHoveredHeaderCell(field.name)}
+          onMouseLeave={() => setHoveredHeaderCell(null)}>
           <span>{field.name}</span>
           {resizeDrag}
         </div>
       );
     },
-    [fields, handleStop],
+    [fields, handleStop, selectedCellIsHeader, selectedCellCol, hoveredHeaderCell],
   );
+
+  const onCellHover = () => {
+    const x = 3;
+  };
+  const onCellUnhover = () => {
+    const y = 5;
+  };
 
   const renderCell = useCallback(
     (params) => {
@@ -383,6 +398,8 @@ const QueryResultTable: FC<Props> = ({
           data={rows}
           col={field.name}
           onOpenPreviewClick={onOpenPreviewClick}
+          onHover={onCellHover}
+          onUnhover={onCellUnhover}
         />
       );
     },
