@@ -607,11 +607,9 @@ const Query: FC<Props> = ({
                   </div>
                 )}
                 <button
-                  className="ui labeled red button"
-                  onClick={() => {
-                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
-                  }}>
-                  Copy to Clipboard
+                  className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
+                  onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
+                  Execute
                 </button>
               </div>
             </div>
@@ -619,12 +617,7 @@ const Query: FC<Props> = ({
           <div className="right menu">
             <div className="item">
               <div className="ui buttons">
-                <button
-                  className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
-                  onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
-                  Execute
-                </button>
-                <div className="or" />
+                {/* <div className="or" /> */}
                 {query.isExecuting && allowCancel ? (
                   <button
                     className={`ui negative button ${query.isCanceling ? 'loading' : ''}`}
