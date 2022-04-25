@@ -102,6 +102,9 @@ const Query: FC<Props> = ({
     voiceParsedCommandText,
     voiceParsedCommandConfidence,
     voiceErrorMessage,
+    selectedCellRow,
+    selectedCellCol,
+    selectedCellIsHeader,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -125,6 +128,9 @@ const Query: FC<Props> = ({
     voiceParsedCommandText: state.voiceCommands.parsedCommandText,
     voiceParsedCommandConfidence: state.voiceCommands.parsedCommandConfidence,
     voiceErrorMessage: state.voiceCommands.errorMessage,
+    selectedCellRow: state.nl2sqls.selectedCellRow,
+    selectedCellCol: state.nl2sqls.selectedCellCol,
+    selectedCellIsHeader: state.nl2sqls.selectedCellIsHeader,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -155,6 +161,26 @@ const Query: FC<Props> = ({
     const previousLengths = prevRows.map((line) => line.length);
     return column + previousLengths.reduce((a, b) => a + b, 0);
   };
+
+  const getCurrentSelectionData = useCallback(() => {
+    if (!query || !query.results || !selectedCellCol) {
+      return null;
+    }
+    const result = query.results[0];
+    let data;
+    if (selectedCellIsHeader) {
+      data = selectedCellCol;
+    } else {
+      data = result.rows[selectedCellRow][selectedCellCol];
+    }
+
+    return {
+      column: selectedCellCol,
+      row: selectedCellRow,
+      isHeader: selectedCellIsHeader,
+      data,
+    };
+  }, [selectedCellCol, selectedCellRow, selectedCellIsHeader, query]);
 
   useEffect(() => {
     if (!editorRef.current) {
@@ -333,7 +359,6 @@ const Query: FC<Props> = ({
 
   useEffect(() => {
     if (voiceErrorMessage && voiceErrorMessage.length > 0) {
-      // console.warn(voiceErrorMessage);
       return;
     }
     if (!voiceParsedCommandText || voiceParsedCommandText.length == 0) {
@@ -361,9 +386,9 @@ const Query: FC<Props> = ({
         }),
       );
     } else {
-      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns));
+      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns, getCurrentSelectionData()));
     }
-  }, [voiceParsedCommandText, voiceErrorMessage]);
+  }, [voiceParsedCommandText, voiceErrorMessage, getCurrentSelectionData]);
 
   const handleCopyText = useCallback(
     (tablecolumns, nl2SqlGeneratedQueries) => {
@@ -381,12 +406,12 @@ const Query: FC<Props> = ({
     (tablecolumns) => {
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
-      dispatch(fetchSQLQuery(copyText, tablecolumns));
+      dispatch(fetchSQLQuery(copyText, tablecolumns, getCurrentSelectionData()));
       if (copyText) {
         loggingInfo(NL2SQLClick, copyText, tablecolumns, []);
       }
     },
-    [onSQLChange, editorRef, onSelectToggle],
+    [onSQLChange, editorRef, onSelectToggle, getCurrentSelectionData],
   );
 
   const handleExecQueryClick = useCallback(

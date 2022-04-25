@@ -1,6 +1,5 @@
 import { ThunkResult } from '../reducers';
-import { requestSQL, requestEdit } from '../api/index';
-// import { uniq } from 'lodash';
+import { requestSQL, requestEdit, requestInit } from '../api/index';
 
 export const FETCH_SQL_SUCCESS = 'FETCH_SQL_SUCCESS';
 export const FETCH_SQL_FAILURE = 'FETCH_SQL_FAILURE';
@@ -19,19 +18,39 @@ export const UNSELECT_ALL = 'UNSELECT_ALL';
 
 const TopNQuery = 3;
 
-// import WebSocket from "ws";
+export function initNL2SQL(dbConnection) {
+  return async (dispatch) => {
+    return await requestInit({
+      client: dbConnection.client,
+      database: dbConnection.database,
+      name: dbConnection.name,
+    });
+  };
+}
 
 // get schema, query
 // return formal sql string
-export function fetchSQLQuery(query?: string, schema?: any): ThunkResult<void> {
+export function fetchSQLQuery(query?: string, schema?: any, selectedData?: any): ThunkResult<void> {
   return async (dispatch) => {
+    if (!query) {
+      return;
+    }
+
     dispatch({ type: FETCH_SQL_IN_PROGRESS });
+
+    const genPattern = /-- Generated from "(.+)"\n.*/;
+    const matchResults = query.match(genPattern);
+    // const editPattern = /`-- Edited from "${query}" with command "${command}"
+
+    const nlCommand = matchResults ? matchResults[1] : query;
+
     const data = {
-      query: query,
+      query: nlCommand,
       sqlschema: schema,
       n: TopNQuery,
+      selections: selectedData,
     };
-    // const ws = new WebSocket("wss://www.example.com/socketserver");
+
     const tStart = performance.now();
     const sql_query = await requestSQL(data).then((resp) => {
       const tEnd = performance.now();
@@ -43,8 +62,9 @@ export function fetchSQLQuery(query?: string, schema?: any): ThunkResult<void> {
       });
       return uniqueQueries;
     });
+
     try {
-      const annotation = `Generated from "${query}"`;
+      const annotation = `Generated from "${nlCommand}"`;
       dispatch({ type: FETCH_SQL_SUCCESS, queries: sql_query, annotation: annotation });
     } catch (error) {
       dispatch({ type: FETCH_SQL_FAILURE, error });

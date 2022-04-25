@@ -25,7 +25,7 @@ import { fetchViewsIfNeeded } from '../actions/views';
 import { fetchRoutinesIfNeeded } from '../actions/routines';
 import { getSQLScriptIfNeeded } from '../actions/sqlscripts';
 import { fetchTableKeysIfNeeded } from '../actions/keys';
-import { clearEverything } from '../actions/nl2sql';
+import { clearEverything, initNL2SQL } from '../actions/nl2sql';
 import DatabaseFilter from '../components/database-filter';
 import DatabaseList from '../components/database-list';
 import DatabaseDiagramModal from '../components/database-diagram-modal';
@@ -146,6 +146,7 @@ const QueryBrowserContainer: FC = () => {
     dispatch(fetchTablesIfNeeded(lastConnectedDB, filter));
     dispatch(fetchViewsIfNeeded(lastConnectedDB, filter));
     dispatch(fetchRoutinesIfNeeded(lastConnectedDB, filter));
+    dispatch(initNL2SQL(connections.server));
   }, [dispatch, history, connections]);
 
   const currentQuery = queries.currentQueryId ? queries.queriesById[queries.currentQueryId] : null;
@@ -170,12 +171,14 @@ const QueryBrowserContainer: FC = () => {
   const onReConnectionClick = useCallback(() => {
     if (currentQuery) {
       dispatch(ConnActions.reconnect(match.params.id, currentQuery.database));
+      dispatch(initNL2SQL(connections.server));
     }
   }, [dispatch, match, currentQuery]);
 
   const onRefreshDatabase = useCallback(
     (database: Database) => {
       dispatch(DbAction.refreshDatabase(database.name));
+      dispatch(initNL2SQL(connections.server));
     },
     [dispatch],
   );
