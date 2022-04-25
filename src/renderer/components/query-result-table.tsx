@@ -1,5 +1,5 @@
 import debounce from 'lodash/debounce';
-import React, { FC, ReactElement, useCallback, useEffect, useState } from 'react';
+import React, { FC, MouseEvent, ReactElement, useCallback, useEffect, useState } from 'react';
 import { Grid, ScrollSync } from 'react-virtualized';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 
@@ -9,8 +9,9 @@ import PreviewModal from './preview-modal';
 import { valueToString } from '../../common/utils/convert';
 
 import './query-result-table.scss';
-import { useAppSelector } from '../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { usePrevious } from '../hooks/usePrevious';
+import { selectCell, unselectAll } from '../actions/nl2sql';
 
 // TODO: remove this shim
 function createCellRenderer(cellRenderer) {
@@ -89,7 +90,17 @@ const QueryResultTable: FC<Props> = ({
   rows,
   rowCount,
 }) => {
-  const config = useAppSelector((state) => state.config);
+  // const config = useAppSelector((state) => state.config);
+  const { selectedCellCol, selectedCellRow, selectedCellIsHeader, config } = useAppSelector(
+    (state) => ({
+      selectedCellCol: state.nl2sqls.selectedCellCol,
+      selectedCellRow: state.nl2sqls.selectedCellRow,
+      selectedCellIsHeader: state.nl2sqls.selectedCellIsHeader,
+      config: state.config,
+    }),
+  );
+  const dispatch = useAppDispatch();
+
   const [tableWidth, setTableWidth] = useState<null | number>(null);
   const [tableHeight, setTableHeight] = useState(0);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
@@ -100,13 +111,16 @@ const QueryResultTable: FC<Props> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [valuePreview, setValuePreview] = useState<any>(null);
 
+  const [hoveredHeaderCell, setHoveredHeaderCell] = useState<string | null>(null);
+  // const [rowSelectIndicatorIndex, setRowSelectIndicatorIndex] = useState<number | null>(null);
+
   const [headerGrid, setHeaderGrid] = useState<any>(null);
   const [rowsGrid, setRowsGrid] = useState<any>(null);
 
   const previousOffsetWidth = usePrevious(widthOffset);
 
   const resize = useCallback(() => {
-    const newTableWidth = window.innerWidth - (widthOffset + 27);
+    const newTableWidth = window.innerWidth - (widthOffset + 27) - 10;
     const newTableHeight = window.innerHeight - (heightOffset + 225);
 
     let totalColumnWidths = 0;
@@ -313,9 +327,27 @@ const QueryResultTable: FC<Props> = ({
     [getColumnWidth, headerGrid, rowsGrid],
   );
 
+  const onHeaderCellClick = (isSelected, col) => (event: MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    if (isSelected) {
+      dispatch(unselectAll());
+    } else {
+      dispatch(
+        selectCell({
+          row: -1,
+          col: col,
+          isHeader: true,
+        }),
+      );
+    }
+  };
+
   const renderHeaderCell = useCallback(
     (params) => {
       const field = fields[params.columnIndex];
+      const isSelected = selectedCellIsHeader && field.name === selectedCellCol;
+      const onClick = onHeaderCellClick(isSelected, field.name);
 
       // We don't want the resizable handle on the last column for layout reasons
       let resizeDrag: ReactElement | null = null;
@@ -333,14 +365,29 @@ const QueryResultTable: FC<Props> = ({
       }
 
       return (
-        <div className="item">
+        <div
+          className="item"
+          style={{
+            backgroundColor: isSelected ? '#dbeeff' : 'white',
+            cursor: hoveredHeaderCell === field.name ? 'pointer' : 'default',
+          }}
+          onClick={onClick}
+          onMouseEnter={() => setHoveredHeaderCell(field.name)}
+          onMouseLeave={() => setHoveredHeaderCell(null)}>
           <span>{field.name}</span>
           {resizeDrag}
         </div>
       );
     },
-    [fields, handleStop],
+    [fields, handleStop, selectedCellIsHeader, selectedCellCol, hoveredHeaderCell],
   );
+
+  const onCellHover = () => {
+    const x = 3;
+  };
+  const onCellUnhover = () => {
+    const y = 5;
+  };
 
   const renderCell = useCallback(
     (params) => {
@@ -351,6 +398,8 @@ const QueryResultTable: FC<Props> = ({
           data={rows}
           col={field.name}
           onOpenPreviewClick={onOpenPreviewClick}
+          onHover={onCellHover}
+          onUnhover={onCellUnhover}
         />
       );
     },

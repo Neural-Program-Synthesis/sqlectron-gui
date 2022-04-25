@@ -102,6 +102,9 @@ const Query: FC<Props> = ({
     voiceParsedCommandText,
     voiceParsedCommandConfidence,
     voiceErrorMessage,
+    selectedCellRow,
+    selectedCellCol,
+    selectedCellIsHeader,
   } = useAppSelector((state) => ({
     isCurrentQuery: query.id === state.queries.currentQueryId,
     enabledAutoComplete: state.config.data?.enabledAutoComplete || false,
@@ -125,6 +128,9 @@ const Query: FC<Props> = ({
     voiceParsedCommandText: state.voiceCommands.parsedCommandText,
     voiceParsedCommandConfidence: state.voiceCommands.parsedCommandConfidence,
     voiceErrorMessage: state.voiceCommands.errorMessage,
+    selectedCellRow: state.nl2sqls.selectedCellRow,
+    selectedCellCol: state.nl2sqls.selectedCellCol,
+    selectedCellIsHeader: state.nl2sqls.selectedCellIsHeader,
   }));
 
   const menuHandler = useMemo(() => new MenuHandler(), []);
@@ -156,6 +162,26 @@ const Query: FC<Props> = ({
     return column + previousLengths.reduce((a, b) => a + b, 0);
   };
 
+  const getCurrentSelectionData = useCallback(() => {
+    if (!query || !query.results || !selectedCellCol) {
+      return null;
+    }
+    const result = query.results[0];
+    let data;
+    if (selectedCellIsHeader) {
+      data = selectedCellCol;
+    } else {
+      data = result.rows[selectedCellRow][selectedCellCol];
+    }
+
+    return {
+      column: selectedCellCol,
+      row: selectedCellRow,
+      isHeader: selectedCellIsHeader,
+      data,
+    };
+  }, [selectedCellCol, selectedCellRow, selectedCellIsHeader, query]);
+
   useEffect(() => {
     if (!editorRef.current) {
       return;
@@ -170,6 +196,10 @@ const Query: FC<Props> = ({
     editor.completers = [];
     // @ts-ignore
     editor.setOption('enableBasicAutocompletion', false);
+    editor.setOption(
+      'placeholder',
+      '\n\n\nType in SQL, or type in a natural language command and press "Generate SQL Suggestions".\nYou can also press "Speak Command" to speak a natural language command.',
+    );
 
     editor.focus();
 
@@ -297,27 +327,27 @@ const Query: FC<Props> = ({
   }, [isShowingCopiedAlert]);
 
   // Initialize the media recorder, only do it once
-  useEffect(() => {
-    if (!mediaRecorderRef.current) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: false,
-        })
-        .then((stream) => {
-          const recorder = new MediaRecorder(stream);
+  // useEffect(() => {
+  //   if (!mediaRecorderRef.current) {
+  //     navigator.mediaDevices
+  //       .getUserMedia({
+  //         audio: true,
+  //         video: false,
+  //       })
+  //       .then((stream) => {
+  //         const recorder = new MediaRecorder(stream);
 
-          recorder.addEventListener('dataavailable', (event) => {
-            // const audioUrl = URL.createObjectURL(event.data);
-            // const audio = new Audio(audioUrl);
-            // audio.play();
-            dispatch(voiceCommand(event.data));
-          });
+  //         recorder.addEventListener('dataavailable', (event) => {
+  //           // const audioUrl = URL.createObjectURL(event.data);
+  //           // const audio = new Audio(audioUrl);
+  //           // audio.play();
+  //           dispatch(voiceCommand(event.data));
+  //         });
 
-          mediaRecorderRef.current = recorder;
-        });
-    }
-  }, []);
+  //         mediaRecorderRef.current = recorder;
+  //       });
+  //   }
+  // }, []);
 
   // when a generated query is selected, set editor content to it
   useEffect(() => {
@@ -329,7 +359,6 @@ const Query: FC<Props> = ({
 
   useEffect(() => {
     if (voiceErrorMessage && voiceErrorMessage.length > 0) {
-      // console.warn(voiceErrorMessage);
       return;
     }
     if (!voiceParsedCommandText || voiceParsedCommandText.length == 0) {
@@ -357,9 +386,9 @@ const Query: FC<Props> = ({
         }),
       );
     } else {
-      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns));
+      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns, getCurrentSelectionData()));
     }
-  }, [voiceParsedCommandText, voiceErrorMessage]);
+  }, [voiceParsedCommandText, voiceErrorMessage, getCurrentSelectionData]);
 
   const handleCopyText = useCallback(
     (tablecolumns, nl2SqlGeneratedQueries) => {
@@ -377,12 +406,12 @@ const Query: FC<Props> = ({
     (tablecolumns) => {
       const copyText =
         editorRef.current?.editor.getCopyText() || editorRef.current?.editor.getValue();
-      dispatch(fetchSQLQuery(copyText, tablecolumns));
+      dispatch(fetchSQLQuery(copyText, tablecolumns, getCurrentSelectionData()));
       if (copyText) {
         loggingInfo(NL2SQLClick, copyText, tablecolumns, []);
       }
     },
-    [onSQLChange, editorRef, onSelectToggle],
+    [onSQLChange, editorRef, onSelectToggle, getCurrentSelectionData],
   );
 
   const handleExecQueryClick = useCallback(
@@ -550,6 +579,7 @@ const Query: FC<Props> = ({
             <>
               <FormalQueryList
                 isLoading={isCallingNL2SQL}
+                handleNL2SQLQueryClick={() => handleNL2SQLQueryClick(tablecolumns)}
                 array={nl2SqlGeneratedQueries}
                 selected={selectedGeneratedQuery}
                 loggingInfo={loggingInfo}
@@ -584,11 +614,6 @@ const Query: FC<Props> = ({
             <div className="item">
               <div className="ui buttons">
                 <button
-                  className={`ui primary button`}
-                  onClick={() => handleNL2SQLQueryClick(tablecolumns)}>
-                  NL2SQL
-                </button>
-                <button
                   className="ui teal button"
                   onClick={() => {
                     return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
@@ -607,11 +632,9 @@ const Query: FC<Props> = ({
                   </div>
                 )}
                 <button
-                  className="ui labeled red button"
-                  onClick={() => {
-                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
-                  }}>
-                  Copy to Clipboard
+                  className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
+                  onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
+                  Execute
                 </button>
               </div>
             </div>
@@ -619,12 +642,7 @@ const Query: FC<Props> = ({
           <div className="right menu">
             <div className="item">
               <div className="ui buttons">
-                <button
-                  className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
-                  onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
-                  Execute
-                </button>
-                <div className="or" />
+                {/* <div className="or" /> */}
                 {query.isExecuting && allowCancel ? (
                   <button
                     className={`ui negative button ${query.isCanceling ? 'loading' : ''}`}
