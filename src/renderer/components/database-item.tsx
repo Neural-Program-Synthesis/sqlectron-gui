@@ -38,6 +38,8 @@ interface Props {
     actionType: ActionType,
     objectType: ObjectType,
   ) => void;
+  onHoverItem?: () => void;
+  onUnhoverItem?: () => void;
 }
 
 const DatabaseItem: FC<Props> = ({
@@ -52,6 +54,8 @@ const DatabaseItem: FC<Props> = ({
   onExecuteDefaultQuery,
   onSelectItem,
   onGetSQLScript,
+  onHoverItem,
+  onUnhoverItem,
 }) => {
   const [tableCollapsed, setTableCollapsed] = useState(true);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -79,6 +83,18 @@ const DatabaseItem: FC<Props> = ({
       });
     }
   }, [contextMenu, displayContextMenuEvent]);
+
+  const onMouseEnter = useCallback(() => {
+    if (onHoverItem) {
+      onHoverItem();
+    }
+  }, [onHoverItem]);
+
+  const onMouseLeave = useCallback(() => {
+    if (onUnhoverItem) {
+      onUnhoverItem();
+    }
+  }, [onUnhoverItem]);
 
   const onSingleClick = useCallback(() => {
     onExecuteDefaultQuery?.(database, item);
@@ -183,7 +199,9 @@ const DatabaseItem: FC<Props> = ({
           />
         ) : null}
         {dbObjectType === 'Table' ? tableIcon : null}
-        <span onClick={onSingleClick}>{fullName}</span>
+        <span onClick={onSingleClick} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+          {fullName}
+        </span>
       </span>
       {columnsByTable?.[name] ? (
         <div style={{ ...(tableCollapsed && { display: 'none' }) }}>

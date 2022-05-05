@@ -144,6 +144,10 @@ const Query: FC<Props> = ({
   const [isColumnsFetch, setIsColumnsFetch] = useState(false);
   const [isTableFetched, setIsTableFetch] = useState(false);
 
+  const [isTourOpen, setIsTourOpen] = useState(false);
+  //const [isShowingMore, setIsShowingMore] = useState(false);
+  const [lastSetVoiceText, setLastSetVoiceText] = useState<string | null>(null);
+
   const mediaRecorderRef = useRef<MediaRecorder>();
 
   const editorRef = useRef<AceEditor>(null);
@@ -328,27 +332,27 @@ const Query: FC<Props> = ({
   }, [isShowingCopiedAlert]);
 
   // Initialize the media recorder, only do it once
-  // useEffect(() => {
-  //   if (!mediaRecorderRef.current) {
-  //     navigator.mediaDevices
-  //       .getUserMedia({
-  //         audio: true,
-  //         video: false,
-  //       })
-  //       .then((stream) => {
-  //         const recorder = new MediaRecorder(stream);
+  useEffect(() => {
+    if (!mediaRecorderRef.current) {
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: true,
+          video: false,
+        })
+        .then((stream) => {
+          const recorder = new MediaRecorder(stream);
 
-  //         recorder.addEventListener('dataavailable', (event) => {
-  //           // const audioUrl = URL.createObjectURL(event.data);
-  //           // const audio = new Audio(audioUrl);
-  //           // audio.play();
-  //           dispatch(voiceCommand(event.data));
-  //         });
+          recorder.addEventListener('dataavailable', (event) => {
+            // const audioUrl = URL.createObjectURL(event.data);
+            // const audio = new Audio(audioUrl);
+            // audio.play();
+            dispatch(voiceCommand(event.data));
+          });
 
-  //         mediaRecorderRef.current = recorder;
-  //       });
-  //   }
-  // }, []);
+          mediaRecorderRef.current = recorder;
+        });
+    }
+  }, []);
 
   // when a generated query is selected, set editor content to it
   useEffect(() => {
@@ -359,37 +363,51 @@ const Query: FC<Props> = ({
   }, [onSQLChange, selectedGeneratedQuery]);
 
   useEffect(() => {
-    if (voiceErrorMessage && voiceErrorMessage.length > 0) {
+    if (
+      (voiceErrorMessage && voiceErrorMessage.length > 0) ||
+      isCallingNL2SQL ||
+      isCallingEditSQL
+    ) {
       return;
     }
-    if (!voiceParsedCommandText || voiceParsedCommandText.length == 0) {
+    if (
+      !voiceParsedCommandText ||
+      voiceParsedCommandText.length == 0 ||
+      voiceParsedCommandText == lastSetVoiceText
+    ) {
       return;
     }
+    setLastSetVoiceText(voiceParsedCommandText);
+    // console.log('~~~~~~~~~SET~~~~~~~~');
+    // console.log(voiceParsedCommandText);
+    // console.log(voiceErrorMessage);
+    // console.log(getCurrentSelectionData());
 
     const editorText = editorRef.current?.editor.getValue();
     const sqlLines = editorText?.split('\n').filter((val) => !val.startsWith('--'));
     const queryToUse = sqlLines?.join('\n').trim();
 
-    if (queryToUse && queryToUse.length > 0) {
-      const selectionRange = editorRef.current?.editor.getSelectionRange();
-      const selection = selectionRange &&
-        editorText && [
-          rowColumnToFlat(selectionRange.start.row, selectionRange.start.column, editorText),
-          rowColumnToFlat(selectionRange.end.row, selectionRange.end.column, editorText),
-        ];
-      const selectionIfExists = selection && selection[0] !== selection[1] ? selection : undefined;
-      dispatch(
-        editSQL({
-          query: queryToUse,
-          selection: selectionIfExists,
-          command: voiceParsedCommandText,
-          schema: tablecolumns,
-        }),
-      );
-    } else {
-      dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns, getCurrentSelectionData()));
-    }
-  }, [voiceParsedCommandText, voiceErrorMessage, getCurrentSelectionData]);
+    // if (queryToUse && queryToUse.length > 0) {
+    //   const selectionRange = editorRef.current?.editor.getSelectionRange();
+    //   const selection = selectionRange &&
+    //     editorText && [
+    //       rowColumnToFlat(selectionRange.start.row, selectionRange.start.column, editorText),
+    //       rowColumnToFlat(selectionRange.end.row, selectionRange.end.column, editorText),
+    //     ];
+    //   const selectionIfExists = selection && selection[0] !== selection[1] ? selection : undefined;
+    //   dispatch(
+    //     editSQL({
+    //       query: queryToUse,
+    //       selection: selectionIfExists,
+    //       command: voiceParsedCommandText,
+    //       schema: tablecolumns,
+    //     }),
+    //   );
+    // } else {
+    onSQLChange(voiceParsedCommandText);
+    dispatch(fetchSQLQuery(voiceParsedCommandText, tablecolumns, getCurrentSelectionData()));
+    // }
+  }, [voiceParsedCommandText, voiceErrorMessage]);
 
   const handleCopyText = useCallback(
     (tablecolumns, nl2SqlGeneratedQueries) => {
@@ -441,9 +459,9 @@ const Query: FC<Props> = ({
   }, [isRecording]);
 
   const onDiscQueryClick = useCallback(() => {
-    onSQLChange('');
+    // onSQLChange('');
     dispatch(clearEverything());
-  }, [onSQLChange]);
+  }, []);
 
   const handleCancelQueryClick = useCallback(() => {
     onCancelQueryClick();
@@ -622,7 +640,6 @@ const Query: FC<Props> = ({
                   }}>
                   Copy to Clipboard
                 </button>
-
                 {isRecording ? (
                   <div className="ui red button" onClick={onRecordingClick}>
                     <i className="x icon"></i> Listening&nbsp;&nbsp;
@@ -636,7 +653,7 @@ const Query: FC<Props> = ({
                 <button
                   className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
                   onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
-                  Execute
+                  Execute Query
                 </button>
               </div>
             </div>
@@ -653,7 +670,7 @@ const Query: FC<Props> = ({
                   </button>
                 ) : (
                   <button className="ui button" onClick={onDiscQueryClick}>
-                    Discard
+                    {isCallingNL2SQL ? 'Cancel Suggestions' : 'Clear Suggestions'}
                   </button>
                 )}
               </div>
