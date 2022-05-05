@@ -31,9 +31,10 @@ interface Props {
   items: { icon: string; label: string }[];
   onCloseConnectionClick?: () => void;
   onReConnectionClick?: () => void;
+  onInfoClick?: () => void;
 }
 
-const Header: FC<Props> = ({ items, onCloseConnectionClick, onReConnectionClick }) => {
+const Header: FC<Props> = ({ items, onCloseConnectionClick, onReConnectionClick, onInfoClick }) => {
   const visibilityButtons = onCloseConnectionClick ? 'visible' : 'hidden';
   const styleItem = { paddingLeft: 0, paddingTop: 0, paddingBottom: 0 };
   return (
@@ -49,6 +50,9 @@ const Header: FC<Props> = ({ items, onCloseConnectionClick, onReConnectionClick 
       <div className="right menu" style={{ visibility: visibilityButtons }}>
         <div className="item borderless" style={styleItem}>
           <div className="ui mini basic icon buttons">
+            <button className="ui button" title="Inform" onClick={onInfoClick}>
+              <i className="info circle icon" />
+            </button>
             <button className="ui button" title="Reconnect" onClick={onReConnectionClick}>
               <i className="plug icon" />
             </button>

@@ -41,6 +41,7 @@ import { Database } from '../reducers/databases';
 import { DbTable } from '../../common/types/database';
 import QueryTabs from '../components/query-tabs';
 import type { ActionType, ObjectType } from '../reducers/sqlscripts';
+import Tour from 'reactour';
 
 require('./query-browser.css');
 require('../components/react-resizable.css');
@@ -92,7 +93,38 @@ const QueryBrowserContainer: FC = () => {
   const [sideBarWidth, setSideBarWidth] = useState(SIDEBAR_WIDTH);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [filter, setFilter] = useState('');
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
+  const tourConfig = [
+    {
+      selector: '#content',
+      content: `Ok, let's start with the function of the tool.`,
+    },
+    {
+      // generate several SQL suggestions
+      selector:
+        '#react-tabs-1 > div > div > div.react-resizeable-container > div.react-resizable.react-resizable-se-resize.no-padding.ui.raised.segment.itemlist.react-resizable > div.ui.one.column.stretched.stackable.center.aligned.grid > div > div > div',
+      content: `Use this button to generate several SQL suggestions.`,
+    },
+    {
+      // copy to clipboard
+      selector:
+        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > button.ui.teal.button',
+      content: `When you click copy button, you could use ctrl + v to paste anywhere.`,
+    },
+    {
+      // record command
+      selector:
+        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > div',
+      content: `You could use voice control for limiting the query. Try to click the button and speak "only ten rows".`,
+    },
+    {
+      // execute
+      selector:
+        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > button.ui.positive.button',
+      content: `You could hit execution to execute the result of the SQL query.`,
+    },
+  ];
   const databaseListRefs = useMemo(
     () =>
       databases.items.reduce<Record<string, RefObject<HTMLDivElement>>>((acc, db) => {
@@ -182,6 +214,20 @@ const QueryBrowserContainer: FC = () => {
     },
     [dispatch],
   );
+
+  const closeTour = () => {
+    setIsTourOpen(false);
+  };
+  const openTour = () => {
+    const timeId = setTimeout(() => {
+      // After 3 seconds set the show value to false
+      setIsTourOpen(true);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeId);
+    };
+  };
 
   const onOpenTab = useCallback(
     (database: Database) => {
@@ -424,11 +470,19 @@ const QueryBrowserContainer: FC = () => {
 
   return (
     <div style={STYLES.wrapper}>
+      <Tour
+        onRequestClose={closeTour}
+        steps={tourConfig}
+        isOpen={isTourOpen}
+        maskClassName="mask"
+        className="helper"
+      />
       <div>
         <Header
           items={breadcrumb}
           onCloseConnectionClick={onCloseConnectionClick}
           onReConnectionClick={onReConnectionClick}
+          onInfoClick={openTour}
         />
       </div>
       <div id="main-collapse" onClick={onCollapseClick} style={STYLES.collapse}>
