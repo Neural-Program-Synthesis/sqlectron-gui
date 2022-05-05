@@ -614,6 +614,23 @@ const Query: FC<Props> = ({
             <div className="item">
               <div className="ui buttons">
                 <button
+                  className="ui teal button"
+                  onClick={() => {
+                    return handleCopyText(tablecolumns, nl2SqlGeneratedQueries);
+                  }}>
+                  Copy to Clipboard
+                </button>
+                {isRecording ? (
+                  <div className="ui red button" onClick={onRecordingClick}>
+                    <i className="x icon"></i> Listening&nbsp;&nbsp;
+                    <div className="ui active inline tiny loader"></div>
+                  </div>
+                ) : (
+                  <div className="ui red button" onClick={onRecordingClick}>
+                    <i className="microphone icon"></i> Record Command
+                  </div>
+                )}
+                <button
                   className={`ui positive button ${query.isExecuting ? 'loading' : ''}`}
                   onClick={() => handleExecQueryClick(tablecolumns, nl2SqlGeneratedQueries)}>
                   Execute Query
