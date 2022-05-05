@@ -50,7 +50,7 @@ const DatabaseListItemMetatada = <T extends { schema?: string; name: string }>({
   onSelectItem,
 }: Props<T>) => {
   const [tableUncollapsed, setTableUncollapsed] = useState<Record<string, boolean>>({});
-
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(!!collapsed);
 
   const handleTableCollapse = useCallback((key: string) => {
@@ -99,7 +99,7 @@ const DatabaseListItemMetatada = <T extends { schema?: string; name: string }>({
                   </span>
                 ) : null}
                 {!hasGroup || (hasChildren && tableUncollapsed[key])
-                  ? grouped[key].map((item) => {
+                  ? grouped[key].map((item, index) => {
                       const hasChildElements = !!onSelectItem;
 
                       const cssStyle = { ...STYLE.item, marginLeft: hasGroup ? '0.5em' : '0px' };
@@ -110,10 +110,12 @@ const DatabaseListItemMetatada = <T extends { schema?: string; name: string }>({
 
                       const { schema, name } = item;
                       const fullName = schema ? `${schema}.${name}` : name;
+                      const listKey = `${key}.${title}.${database.name}.${fullName}`;
 
+                      cssStyle.backgroundColor = listKey === hoveredItem ? '#DCDCDC' : '';
                       return (
                         <DatabaseItem
-                          key={`${key}.${title}.${database.name}.${fullName}`}
+                          key={listKey}
                           client={client}
                           database={database}
                           item={item}
@@ -123,6 +125,8 @@ const DatabaseListItemMetatada = <T extends { schema?: string; name: string }>({
                           triggersByTable={triggersByTable}
                           indexesByTable={indexesByTable}
                           onSelectItem={onSelectItem}
+                          onHoverItem={() => setHoveredItem(listKey)}
+                          onUnhoverItem={() => setHoveredItem(null)}
                           onExecuteDefaultQuery={onExecuteDefaultQuery}
                           onGetSQLScript={onGetSQLScript}
                         />
