@@ -20,7 +20,6 @@ import { fetchTablesIfNeeded } from '../actions/tables';
 import { fetchSQLQuery, clearEverything, editSQL } from '../actions/nl2sql';
 import { voiceCommand } from '../actions/voiceCommands';
 import { NL2SQLClick, SQLQueryExecuted, CopyQueryButtonClicked } from '../actions/logging';
-import Tour from 'reactour';
 
 require('./react-resizable.css');
 require('./override-ace.css');
@@ -154,23 +153,6 @@ const Query: FC<Props> = ({
   const editorRef = useRef<AceEditor>(null);
 
   const dispatch = useAppDispatch();
-
-  const closeTour = () => {
-    setIsTourOpen(false);
-  };
-  const openTour = () => {
-    const timeId = setTimeout(() => {
-      // After 3 seconds set the show value to false
-      setIsTourOpen(true);
-    }, 3000);
-
-    return () => {
-      clearTimeout(timeId);
-    };
-  };
-  useEffect(() => {
-    openTour();
-  }, []);
 
   const handleSelectionChange = useCallback(() => {
     if (editorRef.current) {
@@ -567,47 +549,10 @@ const Query: FC<Props> = ({
   }, [client, query.query]);
 
   const infos = INFOS[client];
-  const tourConfig = [
-    {
-      selector: '#',
-      content: `Ok, let's start with the function of the tool.`,
-    },
-    {
-      // generate several SQL suggestions
-      selector:
-        '#react-tabs-1 > div > div > div.react-resizeable-container > div.react-resizable.react-resizable-se-resize.no-padding.ui.raised.segment.itemlist.react-resizable > div.ui.one.column.stretched.stackable.center.aligned.grid > div > div > div',
-      content: `Use this button to generate several SQL suggestions.`,
-    },
-    {
-      // copy to clipboard
-      selector:
-        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > button.ui.teal.button',
-      content: `When you click copy button, you could use ctrl + v to paste anywhere.`,
-    },
-    {
-      // record command
-      selector:
-        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > div',
-      content: `You could use voice control for limiting the query. Try to click the button and speak "only ten rows".`,
-    },
-    {
-      // execute
-      selector:
-        '#react-tabs-1 > div > div > div.ui.secondary.menu > div.left.menu > div > div > button.ui.positive.button',
-      content: `You could hit execution to execute the result of the SQL query.`,
-    },
-  ];
+
   return (
     <div>
       <div>
-        <Tour
-          onRequestClose={closeTour}
-          steps={tourConfig}
-          isOpen={isTourOpen}
-          maskClassName="mask"
-          className="helper"
-        />
-
         <div className="react-resizeable-container">
           <ResizableBox
             className="react-resizable react-resizable-se-resize ui segment"
