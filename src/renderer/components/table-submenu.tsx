@@ -1,4 +1,6 @@
 import React, { CSSProperties, useCallback, useState } from 'react';
+import { useAppDispatch } from '../hooks/redux';
+import * as LoggingActions from '../actions/logging';
 
 const STYLE: Record<string, CSSProperties> = {
   header: { fontSize: '0.85em', color: '#636363' },
@@ -25,6 +27,19 @@ const TableSubmenu = <T extends { name: string; dataType?: string }>({
     setCollapsed((prev) => !prev);
   }, []);
 
+  const dispatch = useAppDispatch();
+  const LogInfo = useCallback(
+    (item) => {
+      const data = {
+        interaction: 'ColumnItemClicked',
+        columnName: item.name,
+        timestamp: new Date().getTime(),
+      };
+      dispatch(LoggingActions.logEvent(data));
+    },
+    [dispatch],
+  );
+
   return (
     <div className="item">
       <span
@@ -49,7 +64,8 @@ const TableSubmenu = <T extends { name: string; dataType?: string }>({
               key={item.name}
               title={item.name}
               style={{ ...STYLE.item, ...(collapsed ? { display: 'none' } : {}) }}
-              className="item">
+              className="item"
+              onClick={() => LogInfo(item)}>
               {title === 'Columns' ? (
                 <i className="columns icon" style={{ float: 'left', margin: '0 0.3em 0 0' }} />
               ) : null}

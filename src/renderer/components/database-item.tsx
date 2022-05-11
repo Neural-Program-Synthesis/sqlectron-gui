@@ -7,6 +7,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useAppDispatch } from '../hooks/redux';
+import * as LoggingActions from '../actions/logging';
 import { DB_CLIENTS } from '../api';
 import CollapseIcon from './collapse-icon';
 import TableSubmenu from './table-submenu';
@@ -57,6 +59,7 @@ const DatabaseItem: FC<Props> = ({
   onHoverItem,
   onUnhoverItem,
 }) => {
+  const dispatch = useAppDispatch();
   const [tableCollapsed, setTableCollapsed] = useState(true);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [
@@ -96,7 +99,17 @@ const DatabaseItem: FC<Props> = ({
     }
   }, [onUnhoverItem]);
 
+  const LogInfo = useCallback(() => {
+    const data = {
+      interaction: 'TableItemClicked',
+      tableName: item.name,
+      timestamp: new Date().getTime(),
+    };
+    dispatch(LoggingActions.logEvent(data));
+  }, [dispatch]);
+
   const onSingleClick = useCallback(() => {
+    LogInfo();
     onExecuteDefaultQuery?.(database, item);
   }, [database, item, onExecuteDefaultQuery]);
 

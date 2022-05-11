@@ -421,6 +421,22 @@ const Query: FC<Props> = ({
     [onCopyToClipboardEditorClick, selectedGeneratedQuery],
   ); //query.query, editorRef
 
+  const onEditorBlur = useCallback(
+    (tablecolumns, nl2SqlGeneratedQueries) => {
+      const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
+      loggingInfo('EditorBlur', sqlQuery, tablecolumns, nl2SqlGeneratedQueries);
+    },
+    [onCopyToClipboardEditorClick, selectedGeneratedQuery],
+  ); //query.query, editorRef
+
+  const onEditorFocus = useCallback(
+    (tablecolumns, nl2SqlGeneratedQueries) => {
+      const sqlQuery = editorRef.current?.editor.getCopyText() || query.query;
+      loggingInfo('EditorFocus', sqlQuery, tablecolumns, nl2SqlGeneratedQueries);
+    },
+    [onCopyToClipboardEditorClick, selectedGeneratedQuery],
+  ); //query.query, editorRef
+
   const handleNL2SQLQueryClick = useCallback(
     (tablecolumns) => {
       const copyText =
@@ -574,6 +590,8 @@ const Query: FC<Props> = ({
                 commands={commands}
                 editorProps={{ $blockScrolling: Infinity }}
                 onChange={debounce(onSQLChange, 50)}
+                onFocus={() => onEditorFocus(tablecolumns, nl2SqlGeneratedQueries)}
+                onBlur={() => onEditorBlur(tablecolumns, nl2SqlGeneratedQueries)}
                 enableBasicAutocompletion
                 enableLiveAutocompletion
               />
